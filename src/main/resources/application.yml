@@ -1,40 +1,37 @@
-##
-# Application configuration for the laboratory portal backend. This file
-# contains connection settings for the database, MinIO object storage and
-# OAuth2/OpenID Connect client credentials. Adjust the values below to
-# match your local development environment. Spring Boot will automatically
-# pick up these properties on startup.
-
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/labdb
-    username: labuser
-    password: labpwd
+    url: jdbc:postgresql://localhost:5432/medico_db  # comme dans docker-compose
+    username: root
+    password: root
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
+
   security:
     oauth2:
       client:
         registration:
           keycloak:
+            provider: keycloak
             client-id: lab-frontend
-            client-secret: qpdQY5WtvZHmv3TUcaAhLvI7e6ipIFb9
+            client-secret: Yj2ZW8heLdKdxW5MTMX33Z4seljBFPXe
             authorization-grant-type: authorization_code
-            redirect-uri: "http://localhost:3001"
+            # => IMPORTANT : laisser Spring calculer {baseUrl}
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope:
               - openid
               - profile
               - email
         provider:
           keycloak:
-            issuer-uri: http://localhost:8080/realms/medico-cloud/
+            # pas de / final, doit matcher exactement l'issuer du realm
+            issuer-uri: http://localhost:8180/realms/medico-cloud
 
 minio:
   url: http://localhost:9000
-  access-key: minioAccessKey
-  secret-key: minioSecretKey
+  access-key: minioadmin       # comme docker-compose
+  secret-key: minioadmin       # comme docker-compose
   bucket: lab-reports
 
 logging:
