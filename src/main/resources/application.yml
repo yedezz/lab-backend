@@ -1,0 +1,42 @@
+##
+# Application configuration for the laboratory portal backend. This file
+# contains connection settings for the database, MinIO object storage and
+# OAuth2/OpenID Connect client credentials. Adjust the values below to
+# match your local development environment. Spring Boot will automatically
+# pick up these properties on startup.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/labdb
+    username: labuser
+    password: labpwd
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: lab-frontend
+            client-secret: qpdQY5WtvZHmv3TUcaAhLvI7e6ipIFb9
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:3001"
+            scope:
+              - openid
+              - profile
+              - email
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8080/realms/medico-cloud/
+
+minio:
+  url: http://localhost:9000
+  access-key: minioAccessKey
+  secret-key: minioSecretKey
+  bucket: lab-reports
+
+logging:
+  level:
+    root: INFO
