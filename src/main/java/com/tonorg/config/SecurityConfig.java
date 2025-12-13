@@ -2,6 +2,7 @@ package com.tonorg.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
@@ -13,6 +14,9 @@ import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.*;
 
@@ -21,30 +25,70 @@ import java.util.*;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   AuthenticationSuccessHandler roleBasedSuccessHandler,
-                                                   OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService)
-            throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationSuccessHandler roleBasedSuccessHandler,
+            OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService
+    ) throws Exception {
 
         http
+                // ✅ CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+                // ✅ POC
                 .csrf(csrf -> csrf.disable())
+
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/**", "/error").permitAll()
+                        // ✅ préflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // ✅ publics
+                        .requestMatchers("/actuator/**", "/error", "/", "/whoami").permitAll()
+
+                        // ✅ admin
                         .requestMatchers("/admin/**").hasRole("admin")
+
+                        // ✅ lab
                         .requestMatchers("/lab/admin/**").hasRole("labo_admin")
                         .requestMatchers("/lab/**").hasRole("labo_user")
+
+                        // ✅ patient
                         .requestMatchers("/patient/**").hasRole("patient")
+
                         .anyRequest().authenticated()
                 )
+
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUserService))
                         .successHandler(roleBasedSuccessHandler)
                 )
+
                 .logout(logout -> logout
-                        .logoutSuccessUrl("/")
+                        .logoutUrl("/logout")
+                        .logoutSuccessUrl("/logout-success")
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                        .deleteCookies("JSESSIONID")
                 );
 
+
         return http.build();
+    }
+
+    // ✅ CORS
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+
+        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+
+        return source;
     }
 
     @Bean
@@ -53,7 +97,8 @@ public class SecurityConfig {
     }
 
     /**
-     * Custom OidcUserService that maps Keycloak realm roles to Spring authorities.
+     * Map Keycloak realm_access.roles -> ROLE_xxx
+     * Exemple: role "admin" => authority "ROLE_admin"
      */
     @Bean
     public OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
@@ -63,13 +108,9 @@ public class SecurityConfig {
             OidcUser oidcUser = delegate.loadUser(userRequest);
 
             Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
-            // garder les autorités existantes (ROLE_USER, scopes...)
             mappedAuthorities.addAll(oidcUser.getAuthorities());
 
-            Map<String, Object> claims = oidcUser.getClaims();
-
-            // récupérer realm_access.roles
-            Object realmAccessObj = claims.get("realm_access");
+            Object realmAccessObj = oidcUser.getClaims().get("realm_access");
             if (realmAccessObj instanceof Map<?, ?> realmAccess) {
                 Object rolesObj = realmAccess.get("roles");
                 if (rolesObj instanceof Collection<?> roles) {
@@ -82,7 +123,6 @@ public class SecurityConfig {
                 }
             }
 
-            // on recrée un OidcUser avec les autorités enrichies
             return new DefaultOidcUser(
                     mappedAuthorities,
                     oidcUser.getIdToken(),

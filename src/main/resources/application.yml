@@ -33,6 +33,13 @@ minio:
   access-key: minioadmin       # comme docker-compose
   secret-key: minioadmin       # comme docker-compose
   bucket: lab-reports
+keycloak:
+  admin:
+    server-url: http://localhost:8180
+    realm: medico-cloud
+    client-id: admin-cli
+    username: admin         # compte admin Keycloak
+    password: admin
 
 logging:
   level:

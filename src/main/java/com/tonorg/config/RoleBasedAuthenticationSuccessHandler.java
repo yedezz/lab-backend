@@ -5,16 +5,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.web.DefaultRedirectStrategy;
-import org.springframework.security.web.RedirectStrategy;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 
 import java.io.IOException;
 import java.util.Collection;
 
-public class RoleBasedAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
+public class RoleBasedAuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
+    // URL de ton front (Vite)
+    private static final String FRONT_BASE_URL = "http://localhost:5173";
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -22,27 +21,37 @@ public class RoleBasedAuthenticationSuccessHandler implements AuthenticationSucc
                                         Authentication authentication)
             throws IOException, ServletException {
 
-        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+        String targetUrl = determineTargetUrl(authentication);
 
-        String targetUrl = "/"; // fallback
-
-        if (hasRole(authorities, "admin")) {
-            targetUrl = "/admin";
-        } else if (hasRole(authorities, "labo_admin")) {
-            targetUrl = "/lab/admin";
-        } else if (hasRole(authorities, "labo_user")) {
-            targetUrl = "/lab";
-        } else if (hasRole(authorities, "patient")) {
-            targetUrl = "/patient";
-        }
-
-        redirectStrategy.sendRedirect(request, response, targetUrl);
+        // redirige le navigateur vers le front
+        getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 
-    private boolean hasRole(Collection<? extends GrantedAuthority> authorities, String role) {
-        String expected = "ROLE_" + role; // Spring ajoute par défaut le préfixe ROLE_
-        return authorities.stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(expected::equals);
+    private String determineTargetUrl(Authentication authentication) {
+        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+
+        boolean isAdmin      = hasAuthority(authorities, "ROLE_admin");
+        boolean isLaboAdmin  = hasAuthority(authorities, "ROLE_labo_admin");
+        boolean isLaboUser   = hasAuthority(authorities, "ROLE_labo_user");
+        boolean isPatient    = hasAuthority(authorities, "ROLE_patient");
+
+        if (isAdmin) {
+            // route front réservée à l’admin global
+            return FRONT_BASE_URL + "/admin";
+        } else if (isLaboAdmin) {
+            // exemple : route front d’admin de labo
+            return FRONT_BASE_URL + "/lab-admin";
+        } else if (isLaboUser) {
+            return FRONT_BASE_URL + "/lab";
+        } else if (isPatient) {
+            return FRONT_BASE_URL + "/patient";
+        }
+
+        // fallback : homepage front
+        return FRONT_BASE_URL + "/";
+    }
+
+    private boolean hasAuthority(Collection<? extends GrantedAuthority> authorities, String expected) {
+        return authorities.stream().anyMatch(a -> expected.equals(a.getAuthority()));
     }
 }

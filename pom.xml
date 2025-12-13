@@ -50,6 +50,13 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- keycloak driver -->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-admin-client</artifactId>
+            <version>26.0.0</version>
+        </dependency>
+
         <!-- MinIO Java SDK -->
         <dependency>
             <groupId>io.minio</groupId>
