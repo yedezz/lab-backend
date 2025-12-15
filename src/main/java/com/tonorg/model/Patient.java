@@ -1,91 +1,65 @@
 package com.tonorg.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Represents a patient in the laboratory system. Each patient is
- * associated with a {@link User} account for authentication purposes. A
- * patient may have many {@link LabRequest} entries representing different
- * analysis requests over time.
- */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
-@Table(name = "patients")
+@Table(
+        name = "patients",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = "email"),
+                @UniqueConstraint(columnNames = "cin"),
+                @UniqueConstraint(columnNames = "social_security_number")
+        }
+)
 public class Patient {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String firstName;
+
+    @Column(nullable = false)
     private String lastName;
+
     private LocalDate dateOfBirth;
 
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    private String phone;
+
+    @Column(unique = true)
+    private String cin;
+
+    @Column(name = "social_security_number", unique = true)
+    private String socialSecurityNumber;
+
+    @Column(nullable = false)
+    private boolean archived = false;
+    @Column(name = "keycloak_id", unique = true)
+    private String keycloakId;
+    // 🔗 Lien avec le compte utilisateur
     @OneToOne
     @JoinColumn(name = "user_id")
     private User user;
 
+    // 🔗 Demandes d’analyses (⚠️ ignorées en JSON)
     @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<LabRequest> requests = new ArrayList<>();
-
-    public Patient() {
-    }
-
-    public Patient(String firstName, String lastName, LocalDate dateOfBirth, User user) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.dateOfBirth = dateOfBirth;
-        this.user = user;
-    }
-
-    // Getters and setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getFirstName() {
-        return firstName;
-    }
-
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
-
-    public LocalDate getDateOfBirth() {
-        return dateOfBirth;
-    }
-
-    public void setDateOfBirth(LocalDate dateOfBirth) {
-        this.dateOfBirth = dateOfBirth;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public List<LabRequest> getRequests() {
-        return requests;
-    }
-
-    public void setRequests(List<LabRequest> requests) {
-        this.requests = requests;
-    }
 }

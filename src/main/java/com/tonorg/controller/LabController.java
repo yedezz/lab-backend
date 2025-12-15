@@ -95,7 +95,7 @@ public class LabController {
             // The request does not belong to the current user
             return ResponseEntity.notFound().build();
         }
-        String objectKey = request.getReportObjectKey();
+        String objectKey = request.getPdfObjectName();
         if (objectKey == null || objectKey.isBlank()) {
             return ResponseEntity.notFound().build();
         }

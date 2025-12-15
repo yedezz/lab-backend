@@ -14,70 +14,100 @@ import java.util.List;
 public class KeycloakUserService {
 
     private final Keycloak keycloak;
-
-    private static final String REALM = "medico-cloud"; // ⚠️ ton realm applicatif
+    private static final String REALM = "medico-cloud";
 
     public KeycloakUserService(Keycloak keycloak) {
         this.keycloak = keycloak;
     }
 
-    public void createLabAdmin(String username, String email, String tempPassword) {
+    // =====================================================
+    // 🔧 MÉTHODE GÉNÉRIQUE INTERNE
+    // =====================================================
+    private String createUserWithRole(
+            String username,
+            String email,
+            String firstName,
+            String lastName,
+            String tempPassword,
+            String roleName
+    ) {
 
         UsersResource users = keycloak.realm(REALM).users();
 
         UserRepresentation user = new UserRepresentation();
-        user.setUsername(username);
+        user.setUsername(lastName);
         user.setEmail(email);
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
         user.setEnabled(true);
 
-        Response response = null;
-        try {
-            response = users.create(user);
-
-            int status = response.getStatus();
-
-            String body = "";
-            try {
-                body = response.readEntity(String.class);
-            } catch (Exception ignored) {
-            }
-
-            String location = (response.getLocation() != null) ? response.getLocation().toString() : "null";
-
-            System.out.println("KEYCLOAK CREATE USER STATUS = " + status);
-            System.out.println("KEYCLOAK CREATE USER LOCATION = " + location);
-            System.out.println("KEYCLOAK CREATE USER BODY = " + body);
-
-            if (status != 201) {
-                throw new RuntimeException("Erreur création utilisateur Keycloak - status=" + status + " body=" + body);
-            }
-
-            // récupérer userId depuis Location
-            String userId = response.getLocation().getPath().replaceAll(".*/([^/]+)$", "$1");
-
-            // password temporaire
-            CredentialRepresentation password = new CredentialRepresentation();
-            password.setType(CredentialRepresentation.PASSWORD);
-            password.setValue(tempPassword);
-            password.setTemporary(true);
-
-            users.get(userId).resetPassword(password);
-
-            // rôle realm labo_admin
-            RoleRepresentation role = keycloak.realm(REALM)
-                    .roles()
-                    .get("labo_admin")
-                    .toRepresentation();
-
-            users.get(userId)
-                    .roles()
-                    .realmLevel()
-                    .add(List.of(role));
-
-        } finally {
-            if (response != null) {
-                response.close();
-            }
+        Response response = users.create(user);
+        if (response.getStatus() != 201) {
+            throw new RuntimeException(
+                    "Erreur création utilisateur Keycloak, status=" + response.getStatus()
+            );
         }
+
+        String userId = response.getLocation().getPath()
+                .replaceAll(".*/([^/]+)$", "$1");
+
+        // 🔑 mot de passe temporaire
+        CredentialRepresentation password = new CredentialRepresentation();
+        password.setType(CredentialRepresentation.PASSWORD);
+        password.setValue(tempPassword);
+        password.setTemporary(true);
+
+        users.get(userId).resetPassword(password);
+
+        // 🎭 rôle realm
+        RoleRepresentation role = keycloak.realm(REALM)
+                .roles()
+                .get(roleName)
+                .toRepresentation();
+
+        users.get(userId)
+                .roles()
+                .realmLevel()
+                .add(List.of(role));
+
+        return userId;
+    }
+
+    // =====================================================
+    // 🧪 LABO ADMIN
+    // =====================================================
+    public String createLabAdmin(
+            String username,
+            String email,
+            String tempPassword
+    ) {
+        return createUserWithRole(
+                username,
+                email,
+                null,
+                null,
+                tempPassword,
+                "labo_admin"
+        );
+    }
+
+    // =====================================================
+    // 👤 PATIENT
+    // =====================================================
+    public String createPatient(
+            String username,
+            String email,
+            String firstName,
+            String lastName,
+            String tempPassword
+    ) {
+        return createUserWithRole(
+                username,
+                email,
+                firstName,
+                lastName,
+                tempPassword,
+                "patient"
+        );
     }
 }

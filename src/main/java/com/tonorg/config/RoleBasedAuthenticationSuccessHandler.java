@@ -44,7 +44,7 @@ public class RoleBasedAuthenticationSuccessHandler extends SimpleUrlAuthenticati
         } else if (isLaboUser) {
             return FRONT_BASE_URL + "/lab";
         } else if (isPatient) {
-            return FRONT_BASE_URL + "/patient";
+            return FRONT_BASE_URL + "/me";
         }
 
         // fallback : homepage front

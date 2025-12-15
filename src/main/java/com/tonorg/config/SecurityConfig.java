@@ -43,7 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // ✅ publics
-                        .requestMatchers("/actuator/**", "/error", "/", "/whoami").permitAll()
+                        .requestMatchers("/actuator/**", "/error", "/", "/whoami", "/api/**").permitAll()
 
                         // ✅ admin
                         .requestMatchers("/admin/**").hasRole("admin")

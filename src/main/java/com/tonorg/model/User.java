@@ -1,5 +1,6 @@
 package com.tonorg.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 /**
@@ -27,6 +28,7 @@ public class User {
     private String passwordHash;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Patient patient;
 
     public User() {
